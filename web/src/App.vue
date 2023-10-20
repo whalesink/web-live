@@ -1,20 +1,29 @@
 <template>
-	<!--  -->
 	<div
 		class="live-stream-video-wrap"
 		ref="wrapRef"
-		:style="{ left: `${posX}px`, top: `${posY}px` }"
+		:style="{
+			left: posX,
+			top: posY,
+			width: `${outWidth}px`,
+			height: `${outHeight}px`,
+		}"
 	>
-		<div class="topbar" @mousedown="dragStart">实时画面</div>
-		<video class="live-stream-video" ref="playerRef" autoplay></video>
+		<div class="edge-handle-l" @mousedown="edgeDrag"></div>
+		<div class="live-container">
+			<div class="topbar" @mousedown="dragStart">实时画面</div>
+			<video class="live-video" ref="playerRef" autoplay></video>
+		</div>
 	</div>
 </template>
 <script lang="ts">
 	import { defineComponent, onMounted, ref } from "vue";
 	import flv from "flv.js";
 
-	const rtsp = "";
+	const ASPECT_RATIO = 1.69; // 710 / 400
+	// const rtsp = "";
 	// const rtsp = "rtmp://ns8.indexforce.com/home/mystream";
+	// const rtsp = "rtmp://58.200.131.2:1935/livetv/hunantv";
 	// const rtsp = "rtsp://admin:digitalsalt2022@1.117.73.226:11554/stream2";
 	// const rtsp = "rtmp://mobliestream.c3tv.com:554/live/goodtv.sdp";
 
@@ -23,10 +32,12 @@
 			const wrapRef = ref<HTMLDivElement>();
 			const playerRef = ref<HTMLVideoElement>();
 			const player = ref<flv.Player>();
-			const posX = ref<number>();
-			const posY = ref<number>();
+			const posX = ref<string>();
+			const posY = ref<string>();
+			const outWidth = ref<number>();
+			const outHeight = ref<number>();
 
-			const getLivingStream = () => {
+			const getLiveStream = () => {
 				if (flv.isSupported()) {
 					if (playerRef.value) {
 						player.value = flv.createPlayer({
@@ -47,16 +58,52 @@
 				}
 			};
 
+			const edgeDrag = (e: MouseEvent) => {
+				if (!wrapRef.value) return;
+				const mouseX = e.clientX;
+				const boxWidth = wrapRef.value.offsetWidth;
+
+				// const boxTop = wrapRef.value.offsetTop;
+
+				const resizeLiveBox = (event: MouseEvent) => {
+					if (!wrapRef.value) return;
+
+					const left = event.clientX;
+					let offsetX = boxWidth + mouseX - left;
+
+					if (offsetX < 200) offsetX = 200;
+					if (offsetX > 1200) offsetX = 1200;
+
+					outWidth.value = offsetX;
+					outHeight.value = offsetX / ASPECT_RATIO;
+
+					posX.value = "auto";
+					posY.value = "auto";
+				};
+
+				document.addEventListener("mousemove", resizeLiveBox, false);
+				document.addEventListener(
+					"mouseup",
+					() => {
+						document.removeEventListener(
+							"mousemove",
+							resizeLiveBox,
+							false
+						);
+					},
+					false
+				);
+			};
+
 			const dragStart = (e: MouseEvent) => {
 				if (!wrapRef.value) return;
 
 				const ol = e.clientX - wrapRef.value.offsetLeft;
 				const ot = e.clientY - wrapRef.value.offsetTop;
 
-				document.onmousemove = function (event) {
+				const moveLiveBox = (event: MouseEvent) => {
 					if (!wrapRef.value) return;
 
-					// console.log(event);
 					const left = event.clientX;
 					const top = event.clientY;
 
@@ -67,40 +114,42 @@
 						document.documentElement.clientHeight -
 						wrapRef.value.clientHeight;
 
-					if (left - ol < 0) {
-						posX.value = 0;
-					} else if (left - ol > boundaryX) {
-						posX.value = boundaryX;
-					} else {
-						posX.value = left - ol;
-					}
+					let x = left - ol;
+					if (x < 0) x = 0;
+					if (x > boundaryX) x = boundaryX;
 
-					if (top - ot < 0) {
-						posY.value = 0;
-					} else if (top - ot > boundaryY) {
-						posY.value = boundaryY;
-					} else {
-						posY.value = top - ot;
-					}
+					let y = top - ot;
+					if (y < 0) y = 0;
+					if (y > boundaryY) y = boundaryY;
+
+					posX.value = `${x}px`;
+					posY.value = `${y}px`;
 				};
 
-				document.onmouseup = function () {
-					document.onmousemove = null;
-
-					document.onmouseup = null;
-				};
+				document.addEventListener("mousemove", moveLiveBox, false);
+				document.addEventListener(
+					"mouseup",
+					() => {
+						document.removeEventListener(
+							"mousemove",
+							moveLiveBox,
+							false
+						);
+					},
+					false
+				);
 			};
 
 			onMounted(() => {
-				window.onresize = () => {
-					console.log(
-						document.documentElement.clientWidth,
-						document.documentElement.clientHeight,
-						wrapRef?.value?.clientHeight,
-						wrapRef?.value?.clientWidth
-					);
-				};
-				getLivingStream();
+				// window.onresize = () => {
+				// 	console.log(
+				// 		document.documentElement.clientWidth,
+				// 		document.documentElement.clientHeight,
+				// 		wrapRef?.value?.clientHeight,
+				// 		wrapRef?.value?.clientWidth
+				// 	);
+				// };
+				getLiveStream();
 			});
 
 			return {
@@ -108,39 +157,62 @@
 				wrapRef,
 				posX,
 				posY,
+				outWidth,
+				outHeight,
 				dragStart,
+				edgeDrag,
 			};
 		},
 	});
 </script>
 
 <style scoped lang="scss">
-	body {
-		position: relative;
-	}
 	.live-stream-video-wrap {
 		width: 710px;
-		height: 425px;
+		height: 420px;
 		background-color: rgba(126, 126, 126, 0.486);
-		// border: 2px solid #b6b6b6;
 		position: absolute;
 		right: 10px;
-		bottom: 50px;
+		bottom: 10px;
 		user-select: none;
 
-		.topbar {
-			padding: 8px 10px;
-			color: #fff;
-			font-size: 16px;
-			background-color: #0a997d;
-			cursor: move;
-		}
-		.live-stream-video {
-			width: 100%;
+		.edge-handle-l {
+			background-color: transparent;
+			position: absolute;
+			z-index: 1;
+			top: 0;
+			left: 0;
+			width: 4px;
 			height: 100%;
-			object-fit: cover;
-			box-shadow: #0d463a inset 0px 0px 40px;
-			background-color: #fff;
+			cursor: ew-resize;
+			transition: all 0.2s;
+
+			&:hover {
+				width: 6px;
+				background-color: #6c69ff;
+			}
+		}
+
+		.live-container {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			.topbar {
+				padding: 8px 10px;
+				color: #fff;
+				font-size: 16px;
+				background-color: #0a997d;
+				cursor: move;
+			}
+
+			.live-video {
+				position: relative;
+				background-color: #fff;
+				width: 100%;
+				box-shadow: #0d463a inset 0px 0px 40px;
+				object-fit: cover;
+				flex-grow: 1;
+			}
 		}
 	}
 </style>

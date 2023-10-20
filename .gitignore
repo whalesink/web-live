@@ -12,8 +12,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Distributiones
-dist
-dist-ssr
 *.local
 
 # Editor directories and files
