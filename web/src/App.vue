@@ -3,8 +3,10 @@
 		class="live-stream-video-wrap"
 		ref="wrapRef"
 		:style="{
-			left: posX,
-			top: posY,
+			left: posL,
+			top: posT,
+			right: posR,
+			bottom: posB,
 			width: `${outWidth}px`,
 			height: `${outHeight}px`,
 		}"
@@ -21,7 +23,7 @@
 	import flv from "flv.js";
 
 	const ASPECT_RATIO = 1.69; // 710 / 400
-	// const rtsp = "";
+	const rtsp = "";
 	// const rtsp = "rtmp://ns8.indexforce.com/home/mystream";
 	// const rtsp = "rtmp://58.200.131.2:1935/livetv/hunantv";
 	// const rtsp = "rtsp://admin:digitalsalt2022@1.117.73.226:11554/stream2";
@@ -32,8 +34,10 @@
 			const wrapRef = ref<HTMLDivElement>();
 			const playerRef = ref<HTMLVideoElement>();
 			const player = ref<flv.Player>();
-			const posX = ref<string>();
-			const posY = ref<string>();
+			const posL = ref<string>();
+			const posT = ref<string>();
+			const posR = ref<string>();
+			const posB = ref<string>();
 			const outWidth = ref<number>();
 			const outHeight = ref<number>();
 
@@ -63,7 +67,12 @@
 				const mouseX = e.clientX;
 				const boxWidth = wrapRef.value.offsetWidth;
 
-				// const boxTop = wrapRef.value.offsetTop;
+				const cw = document.documentElement.clientWidth;
+				const ch = document.documentElement.clientHeight;
+
+				const pinR = cw - (wrapRef.value.offsetLeft + boxWidth);
+				const pinB =
+					ch - (wrapRef.value.offsetTop + wrapRef.value.offsetHeight);
 
 				const resizeLiveBox = (event: MouseEvent) => {
 					if (!wrapRef.value) return;
@@ -77,8 +86,13 @@
 					outWidth.value = offsetX;
 					outHeight.value = offsetX / ASPECT_RATIO;
 
-					posX.value = "auto";
-					posY.value = "auto";
+					posL.value = "auto";
+					posT.value = "auto";
+
+					posR.value = pinR + "px";
+					posB.value = pinB + "px";
+
+					console.log(pinR, pinB);
 				};
 
 				document.addEventListener("mousemove", resizeLiveBox, false);
@@ -122,8 +136,8 @@
 					if (y < 0) y = 0;
 					if (y > boundaryY) y = boundaryY;
 
-					posX.value = `${x}px`;
-					posY.value = `${y}px`;
+					posL.value = `${x}px`;
+					posT.value = `${y}px`;
 				};
 
 				document.addEventListener("mousemove", moveLiveBox, false);
@@ -141,22 +155,16 @@
 			};
 
 			onMounted(() => {
-				// window.onresize = () => {
-				// 	console.log(
-				// 		document.documentElement.clientWidth,
-				// 		document.documentElement.clientHeight,
-				// 		wrapRef?.value?.clientHeight,
-				// 		wrapRef?.value?.clientWidth
-				// 	);
-				// };
 				getLiveStream();
 			});
 
 			return {
 				playerRef,
 				wrapRef,
-				posX,
-				posY,
+				posL,
+				posT,
+				posR,
+				posB,
 				outWidth,
 				outHeight,
 				dragStart,
